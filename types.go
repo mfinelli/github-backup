@@ -38,22 +38,48 @@ type apiIssue struct {
 
 // massaged "issue" for marshaling into yaml
 type issue struct {
-	Number       int      `yaml:"number"`
-	Title        string   `yaml:"title"`
-	Body         string   `yaml:"-"`
-	Author       string   `yaml:"author"`
-	Editor       string   `yaml:"editor,omitempty"`
-	State        string   `yaml:"state"`
-	CreatedAt    string   `yaml:"created"`
-	ClosedAt     string   `yaml:"closed,omitempty"`
-	LastEditedAt string   `yaml:"edited,omitempty"`
-	IsPinned     bool     `yaml:"pinned"`
-	Assignees    []string `yaml:"assignees,omitempty"`
-	Labels       []string `yaml:"labels,omitempty"`
-	Milestone    string   `yaml:"milestone,omitempty"`
+	Number       int       `yaml:"number"`
+	Title        string    `yaml:"title"`
+	Body         string    `yaml:"-"`
+	Author       string    `yaml:"author"`
+	Editor       string    `yaml:"editor,omitempty"`
+	State        string    `yaml:"state"`
+	CreatedAt    string    `yaml:"created"`
+	ClosedAt     string    `yaml:"closed,omitempty"`
+	LastEditedAt string    `yaml:"edited,omitempty"`
+	IsPinned     bool      `yaml:"pinned"`
+	Assignees    []string  `yaml:"assignees,omitempty"`
+	Labels       []string  `yaml:"labels,omitempty"`
+	Milestone    string    `yaml:"milestone,omitempty"`
+	Comments     []comment `yaml:"-"`
 }
 
-func convertApiIssueToIssue(input apiIssue) issue {
+// issue "comment" as returned by the graphql endpoint
+type apiComment struct {
+	DatabaseId int
+	Author     struct {
+		Login string
+	}
+
+	Editor struct {
+		Login string
+	}
+
+	Body         string
+	CreatedAt    string
+	LastEditedAt string
+}
+
+type comment struct {
+	Body         string `yaml:"-"`
+	DatabaseId   int    `yaml:"id"`
+	Author       string `yaml:"author"`
+	Editor       string `yaml:"editor,omitempty"`
+	CreatedAt    string `yaml:"created"`
+	LastEditedAt string `yaml:"edited,omitempty"`
+}
+
+func convertApiIssueToIssue(input apiIssue, comments []apiComment) issue {
 	output := issue{
 		Number:       input.Number,
 		Title:        input.Title,
@@ -74,6 +100,17 @@ func convertApiIssueToIssue(input apiIssue) issue {
 
 	for _, label := range input.Labels.Nodes {
 		output.Labels = append(output.Labels, label.Name)
+	}
+
+	for _, c := range comments {
+		output.Comments = append(output.Comments, comment{
+			Body:         c.Body,
+			DatabaseId:   c.DatabaseId,
+			Author:       c.Author.Login,
+			Editor:       c.Editor.Login,
+			CreatedAt:    c.CreatedAt,
+			LastEditedAt: c.LastEditedAt,
+		})
 	}
 
 	return output

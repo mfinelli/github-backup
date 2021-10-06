@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	// "fmt"
 )
 
 import "github.com/shurcooL/githubv4"
@@ -83,7 +83,12 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 	}
 
 	for _, inputIssue := range allIssues {
-		oIssue := convertApiIssueToIssue(inputIssue)
+		iComments, err := getIssueCommentsForRepositoryIssue(client, repo, owner, inputIssue.Number)
+		if err != nil {
+			return err
+		}
+
+		oIssue := convertApiIssueToIssue(inputIssue, iComments)
 		// fmt.Println(issue.Number)
 		// err := getIssueCommentsForRepositoryIssue(client, repo, owner, issue.Number)
 		// if err != nil {
@@ -95,37 +100,23 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 		// 	return err
 		// }
 		// fmt.Printf("---\n%s\n", string(d))
-		err := writeIssueToFile(owner, repo, oIssue)
+		err = writeIssueToFiles(owner, repo, oIssue)
 		if err != nil {
 			return err
 		}
 	}
 
-	fmt.Println(allIssues)
+	// fmt.Println(allIssues)
 
 	return nil
 }
 
-func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner string, issue int) error {
-	type comment struct {
-		Author struct {
-			Login string
-		}
-
-		Editor struct {
-			Login string
-		}
-
-		Body         string
-		CreatedAt    string
-		LastEditedAt string
-	}
-
+func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner string, issue int) ([]apiComment, error) {
 	var q struct {
 		Repository struct {
 			Issue struct {
 				Comments struct {
-					Nodes []comment
+					Nodes []apiComment
 
 					PageInfo struct {
 						EndCursor   githubv4.String
@@ -143,11 +134,11 @@ func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner str
 		"commentsCursor": (*githubv4.String)(nil),
 	}
 
-	var allComments []comment
+	var allComments []apiComment
 	for {
 		err := client.Query(context.Background(), &q, vars)
 		if err != nil {
-			return err
+			return []apiComment{}, err
 		}
 		allComments = append(allComments, q.Repository.Issue.Comments.Nodes...)
 		if !q.Repository.Issue.Comments.PageInfo.HasNextPage {
@@ -156,7 +147,7 @@ func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner str
 		vars["commentsCursor"] = githubv4.NewString(q.Repository.Issue.Comments.PageInfo.EndCursor)
 	}
 
-	fmt.Println(allComments)
+	// fmt.Println(allComments)
 
-	return nil
+	return allComments, nil
 }
