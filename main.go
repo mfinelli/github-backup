@@ -19,22 +19,53 @@ func main() {
 	v3Client := github.NewClient(httpClient)
 
 	var repos []*github.Repository
-	var err error
 
 	// if no CLI args then user
 	if len(os.Args[1:]) == 0 {
-		// TODO: get current actor and use it instead of empty string
-		repos, _, err = v3Client.Repositories.List(ctx, "mfinelli", nil)
+		opt := &github.RepositoryListOptions{
+			// TODO: the limit is 100, use that
+			ListOptions: github.ListOptions{PerPage: 10},
+		}
 
-		if err != nil {
-			fmt.Println(err)
+		for {
+			// TODO: get current actor and use it instead of empty string
+			rrepos, resp, err := v3Client.Repositories.List(ctx, "mfinelli", opt)
+
+			if err != nil {
+				fmt.Println(err)
+				// TODO: exit
+			}
+
+			repos = append(repos, rrepos...)
+
+			if resp.NextPage == 0 {
+				break
+			}
+
+			opt.Page = resp.NextPage
 		}
 	// else assume org
 	} else if len(os.Args[1:]) == 1 {
-		repos, _, err = v3Client.Repositories.ListByOrg(ctx, os.Args[1], nil)
+		opt := &github.RepositoryListByOrgOptions{
+			// TODO: the limit is 100, use that
+			ListOptions: github.ListOptions{PerPage: 5},
+		}
 
-		if err != nil {
-			fmt.Println(err)
+		for {
+			rrepos, resp, err := v3Client.Repositories.ListByOrg(ctx, os.Args[1], opt)
+
+			if err != nil {
+				fmt.Println(err)
+				// TODO: exit
+			}
+
+			repos = append(repos, rrepos...)
+
+			if resp.NextPage == 0 {
+				break
+			}
+
+			opt.Page = resp.NextPage
 		}
 	} else {
 		fmt.Println("usage...")
