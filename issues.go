@@ -6,44 +6,9 @@ import (
 )
 
 import "github.com/shurcooL/githubv4"
+import "gopkg.in/yaml.v2"
 
 func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner string) error {
-	type issue struct {
-		Author struct {
-			Login string
-		}
-
-		Editor struct {
-			Login string
-		}
-
-		Number int
-		Title string
-		Body string
-		CreatedAt string
-		ClosedAt string
-		LastEditedAt string
-		IsPinned bool
-		State string
-
-		Assignees struct {
-			Nodes []struct{
-				// Name string
-				Login string
-			}
-		} `graphql:"assignees(first: 100)"`
-
-		Labels struct {
-			Nodes []struct {
-				Name string
-			}
-		} `graphql:"labels(first: 100)"`
-
-		Milestone struct {
-			Title string
-		}
-	}
-
 	var q struct {
 		Repository struct {
 			Description string
@@ -60,7 +25,7 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 			}
 
 			Issues struct {
-				Nodes []issue
+				Nodes []apiIssue
 
 				PageInfo struct {
 					EndCursor   githubv4.String
@@ -103,7 +68,7 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 	// fmt.Println(q.Repository.Description)
 	// fmt.Println(q.Repository)
 
-	var allIssues []issue
+	var allIssues []apiIssue
 	for {
 		err := client.Query(context.Background(), &q, vars)
 		if err != nil {
@@ -116,12 +81,19 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 		vars["issuesCursor"] = githubv4.NewString(q.Repository.Issues.PageInfo.EndCursor)
 	}
 
-	for _, issue := range allIssues {
-		fmt.Println(issue.Number)
-		err := getIssueCommentsForRepositoryIssue(client, repo, owner, issue.Number)
+	for _, inputIssue := range allIssues {
+		oIssue := convertApiIssueToIssue(inputIssue)
+		// fmt.Println(issue.Number)
+		// err := getIssueCommentsForRepositoryIssue(client, repo, owner, issue.Number)
+		// if err != nil {
+		// 	return err
+		// }
+
+		d, err := yaml.Marshal(&oIssue)
 		if err != nil {
 			return err
 		}
+		fmt.Printf("---\n%s\n", string(d))
 	}
 
 	fmt.Println(allIssues)

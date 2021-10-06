@@ -6,6 +6,7 @@ require (
 	github.com/google/go-github/v39 v39.1.0
 	github.com/shurcooL/githubv4 v0.0.0-20210922025249-6831e00d857f
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
+	gopkg.in/yaml.v2 v2.2.2
 )
 
 require (
