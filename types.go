@@ -57,6 +57,7 @@ func convertApiIssueToIssue(input apiIssue) issue {
 	output := issue{
 		Number: input.Number,
 		Title: input.Title,
+		Body: input.Body,
 		Author: input.Author.Login,
 		Editor: input.Editor.Login,
 		State: input.State,

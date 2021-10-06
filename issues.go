@@ -6,7 +6,7 @@ import (
 )
 
 import "github.com/shurcooL/githubv4"
-import "gopkg.in/yaml.v2"
+// import "gopkg.in/yaml.v2"
 
 func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner string) error {
 	var q struct {
@@ -89,11 +89,15 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 		// 	return err
 		// }
 
-		d, err := yaml.Marshal(&oIssue)
+		// d, err := yaml.Marshal(&oIssue)
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Printf("---\n%s\n", string(d))
+		err := writeIssueToFile(owner, repo, oIssue)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("---\n%s\n", string(d))
 	}
 
 	fmt.Println(allIssues)
