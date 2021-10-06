@@ -10,7 +10,7 @@ import (
 import "gopkg.in/yaml.v2"
 
 func writeIssueToFile(owner, repo string, i issue) error {
-	p := filepath.Join(owner,repo,"issues",strconv.Itoa(i.Number))
+	p := filepath.Join(owner, repo, "issues", strconv.Itoa(i.Number))
 	err := os.Mkdir(p, 0755)
 	if err != nil {
 		return err

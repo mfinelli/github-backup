@@ -10,14 +10,14 @@ type apiIssue struct {
 		Login string
 	}
 
-	Number int
-	Title string
-	Body string
-	CreatedAt string
-	ClosedAt string
+	Number       int
+	Title        string
+	Body         string
+	CreatedAt    string
+	ClosedAt     string
 	LastEditedAt string
-	IsPinned bool
-	State string
+	IsPinned     bool
+	State        string
 
 	Assignees struct {
 		Nodes []struct {
@@ -38,34 +38,34 @@ type apiIssue struct {
 
 // massaged "issue" for marshaling into yaml
 type issue struct {
-	Number int `yaml:"number"`
-	Title string `yaml:"title"`
-	Body string `yaml:"-"`
-	Author string `yaml:"author"`
-	Editor string `yaml:"editor,omitempty"`
-	State string `yaml:"state"`
-	CreatedAt string `yaml:"created"`
-	ClosedAt string `yaml:"closed,omitempty"`
-	LastEditedAt string `yaml:"edited,omitempty"`
-	IsPinned bool `yaml:"pinned"`
-	Assignees []string `yaml:"assignees,omitempty"`
-	Labels []string `yaml:"labels,omitempty"`
-	Milestone string `yaml:"milestone,omitempty"`
+	Number       int      `yaml:"number"`
+	Title        string   `yaml:"title"`
+	Body         string   `yaml:"-"`
+	Author       string   `yaml:"author"`
+	Editor       string   `yaml:"editor,omitempty"`
+	State        string   `yaml:"state"`
+	CreatedAt    string   `yaml:"created"`
+	ClosedAt     string   `yaml:"closed,omitempty"`
+	LastEditedAt string   `yaml:"edited,omitempty"`
+	IsPinned     bool     `yaml:"pinned"`
+	Assignees    []string `yaml:"assignees,omitempty"`
+	Labels       []string `yaml:"labels,omitempty"`
+	Milestone    string   `yaml:"milestone,omitempty"`
 }
 
 func convertApiIssueToIssue(input apiIssue) issue {
 	output := issue{
-		Number: input.Number,
-		Title: input.Title,
-		Body: input.Body,
-		Author: input.Author.Login,
-		Editor: input.Editor.Login,
-		State: input.State,
-		CreatedAt: input.CreatedAt,
-		ClosedAt: input.ClosedAt,
+		Number:       input.Number,
+		Title:        input.Title,
+		Body:         input.Body,
+		Author:       input.Author.Login,
+		Editor:       input.Editor.Login,
+		State:        input.State,
+		CreatedAt:    input.CreatedAt,
+		ClosedAt:     input.ClosedAt,
 		LastEditedAt: input.LastEditedAt,
-		IsPinned: input.IsPinned,
-		Milestone: input.Milestone.Title,
+		IsPinned:     input.IsPinned,
+		Milestone:    input.Milestone.Title,
 	}
 
 	for _, assignee := range input.Assignees.Nodes {

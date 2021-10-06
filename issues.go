@@ -6,19 +6,20 @@ import (
 )
 
 import "github.com/shurcooL/githubv4"
+
 // import "gopkg.in/yaml.v2"
 
 func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner string) error {
 	var q struct {
 		Repository struct {
 			Description string
-			CreatedAt string
-			DiskUsage int // KB
+			CreatedAt   string
+			DiskUsage   int // KB
 			HomepageURL string
-			IsArchived bool
-			IsPrivate bool
-			IsTemplate bool
-			SshURL string
+			IsArchived  bool
+			IsPrivate   bool
+			IsTemplate  bool
+			SshURL      string
 
 			TemplateRepository struct {
 				NameWithOwner string
@@ -54,8 +55,8 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 	}
 
 	vars := map[string]interface{}{
-		"owner": githubv4.String(owner),
-		"name": githubv4.String(repo),
+		"owner":        githubv4.String(owner),
+		"name":         githubv4.String(repo),
 		"issuesCursor": (*githubv4.String)(nil),
 	}
 
@@ -115,8 +116,8 @@ func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner str
 			Login string
 		}
 
-		Body string
-		CreatedAt string
+		Body         string
+		CreatedAt    string
 		LastEditedAt string
 	}
 
@@ -127,7 +128,7 @@ func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner str
 					Nodes []comment
 
 					PageInfo struct {
-						EndCursor githubv4.String
+						EndCursor   githubv4.String
 						HasNextPage githubv4.Boolean
 					}
 				} `graphql:"comments(first: 100, after: $commentsCursor)"`
@@ -136,9 +137,9 @@ func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner str
 	}
 
 	vars := map[string]interface{}{
-		"owner": githubv4.String(owner),
-		"name": githubv4.String(repo),
-		"issue": githubv4.Int(issue),
+		"owner":          githubv4.String(owner),
+		"name":           githubv4.String(repo),
+		"issue":          githubv4.Int(issue),
 		"commentsCursor": (*githubv4.String)(nil),
 	}
 
