@@ -22,6 +22,7 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 		Body string
 		CreatedAt string
 		ClosedAt string
+		LastEditedAt string
 		IsPinned bool
 		State string
 
@@ -60,9 +61,6 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 
 			Issues struct {
 				Nodes []issue
-				// Nodes []struct{
-				// 	Body string
-				// }
 
 				PageInfo struct {
 					EndCursor   githubv4.String
@@ -118,7 +116,70 @@ func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner stri
 		vars["issuesCursor"] = githubv4.NewString(q.Repository.Issues.PageInfo.EndCursor)
 	}
 
+	for _, issue := range allIssues {
+		fmt.Println(issue.Number)
+		err := getIssueCommentsForRepositoryIssue(client, repo, owner, issue.Number)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Println(allIssues)
+
+	return nil
+}
+
+func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner string, issue int) error {
+	type comment struct {
+		Author struct {
+			Login string
+		}
+
+		Editor struct {
+			Login string
+		}
+
+		Body string
+		CreatedAt string
+		LastEditedAt string
+	}
+
+	var q struct {
+		Repository struct {
+			Issue struct {
+				Comments struct {
+					Nodes []comment
+
+					PageInfo struct {
+						EndCursor githubv4.String
+						HasNextPage githubv4.Boolean
+					}
+				} `graphql:"comments(first: 100, after: $commentsCursor)"`
+			} `graphql:"issue(number: $issue)"`
+		} `graphql:"repository(owner: $owner, name: $name)"`
+	}
+
+	vars := map[string]interface{}{
+		"owner": githubv4.String(owner),
+		"name": githubv4.String(repo),
+		"issue": githubv4.Int(issue),
+		"commentsCursor": (*githubv4.String)(nil),
+	}
+
+	var allComments []comment
+	for {
+		err := client.Query(context.Background(), &q, vars)
+		if err != nil {
+			return err
+		}
+		allComments = append(allComments, q.Repository.Issue.Comments.Nodes...)
+		if !q.Repository.Issue.Comments.PageInfo.HasNextPage {
+			break
+		}
+		vars["commentsCursor"] = githubv4.NewString(q.Repository.Issue.Comments.PageInfo.EndCursor)
+	}
+
+	fmt.Println(allComments)
 
 	return nil
 }
