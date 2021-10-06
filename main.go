@@ -21,6 +21,7 @@ func main() {
 	v4Client := githubv4.NewClient(httpClient)
 
 	var repos []*github.Repository
+	var owner string
 
 	actor, err := getCurrentActor(v4Client)
 
@@ -31,6 +32,8 @@ func main() {
 
 	// if no CLI args then user
 	if len(os.Args[1:]) == 0 {
+		owner = actor
+
 		opt := &github.RepositoryListOptions{
 			ListOptions: github.ListOptions{PerPage: 100},
 		}
@@ -52,14 +55,17 @@ func main() {
 
 			opt.Page = resp.NextPage
 		}
+
 	// else assume org
 	} else if len(os.Args[1:]) == 1 {
+		owner = os.Args[1]
+
 		opt := &github.RepositoryListByOrgOptions{
 			ListOptions: github.ListOptions{PerPage: 100},
 		}
 
 		for {
-			rrepos, resp, err := v3Client.Repositories.ListByOrg(ctx, os.Args[1], opt)
+			rrepos, resp, err := v3Client.Repositories.ListByOrg(ctx, owner, opt)
 
 			if err != nil {
 				fmt.Println(err)
@@ -80,7 +86,18 @@ func main() {
 
 	// fmt.Println(repos)
 
-	for _, repo := range repos {
+	for i, repo := range repos {
 		fmt.Println(github.Stringify(repo.FullName))
+
+		err := getIssuesAndCommentsForRepository(v4Client, *repo.Name, owner)
+
+		if err != nil {
+			fmt.Println(err)
+			// TODO: exit
+		}
+
+		if i == 1 {
+			break
+		}
 	}
 }
