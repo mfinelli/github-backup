@@ -8,6 +8,7 @@ import (
 
 import "golang.org/x/oauth2"
 import "github.com/google/go-github/v39/github"
+import "github.com/shurcooL/githubv4"
 
 func main() {
 	ctx := context.Background()
@@ -17,19 +18,26 @@ func main() {
 
 	httpClient := oauth2.NewClient(ctx, auth)
 	v3Client := github.NewClient(httpClient)
+	v4Client := githubv4.NewClient(httpClient)
 
 	var repos []*github.Repository
+
+	actor, err := getCurrentActor(v4Client)
+
+	if err != nil {
+		fmt.Println(err)
+		// TODO: exit
+	}
 
 	// if no CLI args then user
 	if len(os.Args[1:]) == 0 {
 		opt := &github.RepositoryListOptions{
-			// TODO: the limit is 100, use that
-			ListOptions: github.ListOptions{PerPage: 10},
+			ListOptions: github.ListOptions{PerPage: 100},
 		}
 
 		for {
 			// TODO: get current actor and use it instead of empty string
-			rrepos, resp, err := v3Client.Repositories.List(ctx, "mfinelli", opt)
+			rrepos, resp, err := v3Client.Repositories.List(ctx, actor, opt)
 
 			if err != nil {
 				fmt.Println(err)
@@ -47,8 +55,7 @@ func main() {
 	// else assume org
 	} else if len(os.Args[1:]) == 1 {
 		opt := &github.RepositoryListByOrgOptions{
-			// TODO: the limit is 100, use that
-			ListOptions: github.ListOptions{PerPage: 5},
+			ListOptions: github.ListOptions{PerPage: 100},
 		}
 
 		for {
