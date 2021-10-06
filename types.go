@@ -40,6 +40,7 @@ type apiIssue struct {
 type issue struct {
 	Number int `yaml:"number"`
 	Title string `yaml:"title"`
+	Body string `yaml:"-"`
 	Author string `yaml:"author"`
 	Editor string `yaml:"editor,omitempty"`
 	State string `yaml:"state"`

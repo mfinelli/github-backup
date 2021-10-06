@@ -86,6 +86,19 @@ func main() {
 
 	// fmt.Println(repos)
 
+	repoNames := []string{}
+
+	for _, repo := range repos {
+		repoNames = append(repoNames, *repo.Name)
+	}
+
+	// fmt.Println(repoNames)
+	err = setupDirectories(owner, repoNames)
+	if err != nil {
+		fmt.Println(err)
+		// TODO: exit
+	}
+
 	for i, repo := range repos {
 		fmt.Println(github.Stringify(repo.FullName))
 
