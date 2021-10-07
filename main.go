@@ -12,108 +12,35 @@ import "github.com/google/go-github/v39/github"
 import "github.com/shurcooL/githubv4"
 
 func run2() {
-	ctx := context.Background()
-	auth := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")},
-	)
-
-	httpClient := oauth2.NewClient(ctx, auth)
-	v3Client := github.NewClient(httpClient)
-	v4Client := githubv4.NewClient(httpClient)
-
-	var repos []*github.Repository
-	var owner string
-
-	actor, err := getCurrentActor(v4Client)
-
-	if err != nil {
-		fmt.Println(err)
-		// TODO: exit
-	}
-
-	// if no CLI args then user
-	if len(os.Args[1:]) == 0 {
-		owner = actor
-
-		opt := &github.RepositoryListOptions{
-			ListOptions: github.ListOptions{PerPage: 100},
-		}
-
-		for {
-			// TODO: get current actor and use it instead of empty string
-			rrepos, resp, err := v3Client.Repositories.List(ctx, actor, opt)
-
-			if err != nil {
-				fmt.Println(err)
-				// TODO: exit
-			}
-
-			repos = append(repos, rrepos...)
-
-			if resp.NextPage == 0 {
-				break
-			}
-
-			opt.Page = resp.NextPage
-		}
-
-	// else assume org
-	} else if len(os.Args[1:]) == 1 {
-		owner = os.Args[1]
-
-		opt := &github.RepositoryListByOrgOptions{
-			ListOptions: github.ListOptions{PerPage: 100},
-		}
-
-		for {
-			rrepos, resp, err := v3Client.Repositories.ListByOrg(ctx, owner, opt)
-
-			if err != nil {
-				fmt.Println(err)
-				// TODO: exit
-			}
-
-			repos = append(repos, rrepos...)
-
-			if resp.NextPage == 0 {
-				break
-			}
-
-			opt.Page = resp.NextPage
-		}
-	} else {
-		fmt.Println("usage...")
-	}
-
 	// fmt.Println(repos)
 
-	repoNames := []string{}
+	// repoNames := []string{}
 
-	for _, repo := range repos {
-		repoNames = append(repoNames, *repo.Name)
-	}
+	// for _, repo := range repos {
+	// 	repoNames = append(repoNames, *repo.Name)
+	// }
 
-	// fmt.Println(repoNames)
-	err = setupDirectories(owner, repoNames)
-	if err != nil {
-		fmt.Println(err)
-		// TODO: exit
-	}
+	// // fmt.Println(repoNames)
+	// err = setupDirectories(owner, repoNames)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	// TODO: exit
+	// }
 
-	for _, repo := range repos {
-		fmt.Println(github.Stringify(repo.FullName))
+	// for _, repo := range repos {
+	// 	fmt.Println(github.Stringify(repo.FullName))
 
-		err := getIssuesAndCommentsForRepository(v4Client, *repo.Name, owner)
+	// 	err := getIssuesAndCommentsForRepository(v4Client, *repo.Name, owner)
 
-		if err != nil {
-			fmt.Println(err)
-			// TODO: exit
-		}
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 		// TODO: exit
+	// 	}
 
-		// if i == 100 {
-		// 	break
-		// }
-	}
+	// 	// if i == 100 {
+	// 	// 	break
+	// 	// }
+	// }
 }
 
 type CLI struct {
@@ -145,16 +72,53 @@ func main() {
 }
 
 func run(ctx context.Context, cli CLI) int {
-	// fmt.Println("org is ", cli.Organization)
-	// fmt.Println("repo is ", cli.Repository)
-
 	config, err := ValidateConfig(cli)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return 1
 	}
 
-	fmt.Println(config)
+	auth := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: config.GithubToken},
+	)
+
+	httpClient := oauth2.NewClient(ctx, auth)
+	v3Client := github.NewClient(httpClient)
+	v4Client := githubv4.NewClient(httpClient)
+
+	actor, err := getCurrentActor(v4Client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
+
+	var repositories []*github.Repository
+
+	if cli.Organization == "" && cli.Repository == "" {
+		repositories, err = getUserRepositories(ctx, v3Client, actor)
+	} else if cli.Organization == "" && cli.Repository != "" {
+		repositories, err = getSingleRepository(ctx, v3Client, actor,
+			cli.Repository)
+	} else if cli.Organization != "" && cli.Repository == "" {
+		repositories, err = getOrgRepositories(ctx, v3Client,
+			cli.Organization)
+	} else if cli.Organization != "" && cli.Repository != "" {
+		repositories, err = getSingleRepository(ctx, v3Client,
+			cli.Organization, cli.Repository)
+	} else {
+		fmt.Fprintf(os.Stderr, "given unsupported options\n")
+		return 25
+	}
+
+	// this is from fetching the repositories above
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
+
+	for _, r := range repositories {
+		fmt.Println(github.Stringify(r.FullName))
+	}
 
 	return 0
 }
