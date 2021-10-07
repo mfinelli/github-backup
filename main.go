@@ -124,6 +124,7 @@ type CLI struct {
 
 	GithubToken string `help:"PAT to access the GitHub API" group:"Backup options:" short:"t" env:"GITHUB_TOKEN" placeholder:"\"...\""`
 	Path        string `help:"Write the backup to the given path" group:"Backup options:" short:"p" placeholder:"\".\""`
+	Repository  string `help:"Backup a single repository by name" group:"Backup options:" short:"r" placeholder:"\"\""`
 
 	GitBinary   string `help:"Path to external git binary" group:"Git flags:" xor:"gitbinary" placeholder:"\"git\""`
 	NoGitBinary bool   `help:"Do not use an external git binary" group:"Git flags:" xor:"gitbinary"`
@@ -133,20 +134,27 @@ func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "--version" {
 		fmt.Println("ghb version 1")
 	} else {
+		ctx := context.Background()
+
 		var cli CLI
 		kong.Parse(&cli,
 			kong.Description("Backup the user's GitHub repositories and associated data."))
-		os.Exit(run(cli))
+
+		os.Exit(run(ctx, cli))
 	}
 }
 
-func run(cli CLI) int {
-	fmt.Println("debug is ", cli.Debug)
-	fmt.Println("quiet is ", cli.Quiet)
-	fmt.Println("gitbin is ", cli.GitBinary)
-	fmt.Println("no gitbin is ", cli.NoGitBinary)
-	fmt.Println("path is ", cli.Path)
-	fmt.Println("org is", cli.Organization)
+func run(ctx context.Context, cli CLI) int {
+	// fmt.Println("org is ", cli.Organization)
+	// fmt.Println("repo is ", cli.Repository)
+
+	config, err := ValidateConfig(cli)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
+
+	fmt.Println(config)
 
 	return 0
 }
