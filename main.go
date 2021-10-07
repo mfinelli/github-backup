@@ -7,10 +7,11 @@ import (
 )
 
 import "golang.org/x/oauth2"
+import "github.com/alecthomas/kong"
 import "github.com/google/go-github/v39/github"
 import "github.com/shurcooL/githubv4"
 
-func main() {
+func run2() {
 	ctx := context.Background()
 	auth := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")},
@@ -99,7 +100,7 @@ func main() {
 		// TODO: exit
 	}
 
-	for i, repo := range repos {
+	for _, repo := range repos {
 		fmt.Println(github.Stringify(repo.FullName))
 
 		err := getIssuesAndCommentsForRepository(v4Client, *repo.Name, owner)
@@ -109,8 +110,43 @@ func main() {
 			// TODO: exit
 		}
 
-		if i == 1 {
-			break
-		}
+		// if i == 100 {
+		// 	break
+		// }
 	}
+}
+
+type CLI struct {
+	Organization string `help:"Backup an organization's repositories." arg:"" optional:""`
+
+	Debug bool `help:"Enable extra verbose output." short:"d"`
+	Quiet bool `help:"Supress all standard output." short:"q"`
+
+	GithubToken string `help:"PAT to access the GitHub API" group:"Backup options:" short:"t" env:"GITHUB_TOKEN" placeholder:"\"...\""`
+	Path        string `help:"Write the backup to the given path" group:"Backup options:" short:"p" placeholder:"\".\""`
+
+	GitBinary   string `help:"Path to external git binary" group:"Git flags:" xor:"gitbinary" placeholder:"\"git\""`
+	NoGitBinary bool   `help:"Do not use an external git binary" group:"Git flags:" xor:"gitbinary"`
+}
+
+func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--version" {
+		fmt.Println("ghb version 1")
+	} else {
+		var cli CLI
+		kong.Parse(&cli,
+			kong.Description("Backup the user's GitHub repositories and associated data."))
+		os.Exit(run(cli))
+	}
+}
+
+func run(cli CLI) int {
+	fmt.Println("debug is ", cli.Debug)
+	fmt.Println("quiet is ", cli.Quiet)
+	fmt.Println("gitbin is ", cli.GitBinary)
+	fmt.Println("no gitbin is ", cli.NoGitBinary)
+	fmt.Println("path is ", cli.Path)
+	fmt.Println("org is", cli.Organization)
+
+	return 0
 }
