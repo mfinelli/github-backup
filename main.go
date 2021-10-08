@@ -127,7 +127,13 @@ func run(ctx context.Context, cli CLI) int {
 	}
 
 	for _, r := range repositories {
-		err = writeRepositoryMetadata(config, r)
+		repo, err := getRepositoryInfo(ctx, v4Client, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+
+		err = writeRepositoryMetadata(config, repo)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
