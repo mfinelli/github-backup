@@ -2,152 +2,174 @@ package main
 
 import (
 	"context"
-	// "fmt"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
 )
 
 import "github.com/shurcooL/githubv4"
+import "gopkg.in/yaml.v2"
 
-// import "gopkg.in/yaml.v2"
-
-func getIssuesAndCommentsForRepository(client *githubv4.Client, repo, owner string) error {
+func getRepositoryIssues(ctx context.Context, client *githubv4.Client, repo repository) ([]issue, error) {
 	var q struct {
 		Repository struct {
-			Description string
-			CreatedAt   string
-			DiskUsage   int // KB
-			HomepageURL string
-			IsArchived  bool
-			IsPrivate   bool
-			IsTemplate  bool
-			SshURL      string
-
-			TemplateRepository struct {
-				NameWithOwner string
-			}
-
 			Issues struct {
-				Nodes []apiIssue
-
+				Nodes    []apiIssue
 				PageInfo struct {
 					EndCursor   githubv4.String
 					HasNextPage githubv4.Boolean
 				}
-			} `graphql:"issues(first: 100, after: $issuesCursor)"`
-
-			// TODO: rate limiting
-
-			// TODO: branch protection rules
-			// TODO: deploy keys (just the ssh bits)
-			// TODO: has wiki enabled
-			// TODO: use has issues enabled
-			// TODO: issues
-			// TODO: pull requests
-			// TODO: projects
-			// TODO: discussions
-			// TODO: releases
-			// TODO: release artifacts
-			// TODO: packages
-			// TODO: milestones
-
-			// Issue struct {
-			// }
+			} `graphql:"issues(first: 100, after: $issueCursor)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
 
 	vars := map[string]interface{}{
-		"owner":        githubv4.String(owner),
-		"name":         githubv4.String(repo),
-		"issuesCursor": (*githubv4.String)(nil),
+		"owner":       githubv4.String(repo.Owner),
+		"name":        githubv4.String(repo.Name),
+		"issueCursor": (*githubv4.String)(nil),
 	}
 
-	// err := client.Query(context.Background(), &q, vars)
+	var issues []issue
+	var apiIssues []apiIssue
 
-	// if err != nil {
-	// 	return err
-	// }
-
-	// fmt.Println(q.Repository.Description)
-	// fmt.Println(q.Repository)
-
-	var allIssues []apiIssue
 	for {
-		err := client.Query(context.Background(), &q, vars)
+		err := client.Query(ctx, &q, vars)
 		if err != nil {
-			return err
+			return []issue{}, err
 		}
-		allIssues = append(allIssues, q.Repository.Issues.Nodes...)
+
+		apiIssues = append(apiIssues, q.Repository.Issues.Nodes...)
 		if !q.Repository.Issues.PageInfo.HasNextPage {
 			break
 		}
-		vars["issuesCursor"] = githubv4.NewString(q.Repository.Issues.PageInfo.EndCursor)
+		vars["issueCursor"] = githubv4.NewString(q.Repository.Issues.PageInfo.EndCursor)
 	}
 
-	for _, inputIssue := range allIssues {
-		iComments, err := getIssueCommentsForRepositoryIssue(client, repo, owner, inputIssue.Number)
+	for _, iIssue := range apiIssues {
+		comments, err := getIssueComments(ctx, client, repo, iIssue.Number)
 		if err != nil {
-			return err
+			return []issue{}, err
 		}
 
-		oIssue := convertApiIssueToIssue(inputIssue, iComments)
-		// fmt.Println(issue.Number)
-		// err := getIssueCommentsForRepositoryIssue(client, repo, owner, issue.Number)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// d, err := yaml.Marshal(&oIssue)
-		// if err != nil {
-		// 	return err
-		// }
-		// fmt.Printf("---\n%s\n", string(d))
-		err = writeIssueToFiles(owner, repo, oIssue)
-		if err != nil {
-			return err
-		}
+		issues = append(issues, convertApiIssueToIssue(iIssue, comments))
 	}
 
-	// fmt.Println(allIssues)
-
-	return nil
+	return issues, nil
 }
 
-func getIssueCommentsForRepositoryIssue(client *githubv4.Client, repo, owner string, issue int) ([]apiComment, error) {
+func getIssueComments(ctx context.Context, client *githubv4.Client, repo repository, issueNo int) ([]apiComment, error) {
 	var q struct {
 		Repository struct {
 			Issue struct {
 				Comments struct {
-					Nodes []apiComment
-
+					Nodes    []apiComment
 					PageInfo struct {
 						EndCursor   githubv4.String
 						HasNextPage githubv4.Boolean
 					}
-				} `graphql:"comments(first: 100, after: $commentsCursor)"`
+				} `graphql:"comments(first: 100, after: $commentCursor)"`
 			} `graphql:"issue(number: $issue)"`
 		} `graphql:"repository(owner: $owner, name: $name)"`
 	}
 
 	vars := map[string]interface{}{
-		"owner":          githubv4.String(owner),
-		"name":           githubv4.String(repo),
-		"issue":          githubv4.Int(issue),
-		"commentsCursor": (*githubv4.String)(nil),
+		"owner":         githubv4.String(repo.Owner),
+		"name":          githubv4.String(repo.Name),
+		"issue":         githubv4.Int(issueNo),
+		"commentCursor": (*githubv4.String)(nil),
 	}
 
-	var allComments []apiComment
+	var comments []apiComment
+
 	for {
-		err := client.Query(context.Background(), &q, vars)
+		err := client.Query(ctx, &q, vars)
 		if err != nil {
 			return []apiComment{}, err
 		}
-		allComments = append(allComments, q.Repository.Issue.Comments.Nodes...)
+
+		comments = append(comments, q.Repository.Issue.Comments.Nodes...)
 		if !q.Repository.Issue.Comments.PageInfo.HasNextPage {
 			break
 		}
-		vars["commentsCursor"] = githubv4.NewString(q.Repository.Issue.Comments.PageInfo.EndCursor)
+		vars["commentCursor"] = githubv4.NewString(q.Repository.Issue.Comments.PageInfo.EndCursor)
 	}
 
-	// fmt.Println(allComments)
+	return comments, nil
 
-	return allComments, nil
+}
+
+func writeIssuesToDisk(config Config, repo repository, issues []issue) error {
+	if len(issues) == 0 {
+		return nil
+	}
+
+	basepath := filepath.Join(config.BackupPath, repo.Owner, repo.Name, "issues")
+
+	err := os.Mkdir(basepath, 0755)
+	if err != nil {
+		return err
+	}
+
+	for _, i := range issues {
+		p := filepath.Join(basepath, strconv.Itoa(i.Number))
+		err = os.Mkdir(p, 0755)
+		if err != nil {
+			return err
+		}
+
+		data, err := yaml.Marshal(&i)
+		if err != nil {
+			return err
+		}
+
+		meta := fmt.Sprintf("---\n%s\n", string(data))
+
+		err = os.WriteFile(filepath.Join(p, "body.md"), []byte(i.Body), 0644)
+		if err != nil {
+			return err
+		}
+
+		err = os.WriteFile(filepath.Join(p, "issue.yml"), []byte(meta), 0644)
+		if err != nil {
+			return err
+		}
+
+		if len(i.Comments) > 0 {
+			cp := filepath.Join(p, "comments")
+			err = os.Mkdir(cp, 0755)
+			if err != nil {
+				return nil
+			}
+
+			for ci, c := range i.Comments {
+				index := ci + 1 // don't do 0-based directories
+				cip := filepath.Join(cp, strconv.Itoa(index))
+
+				err = os.Mkdir(cip, 0755)
+				if err != nil {
+					return err
+				}
+
+				cdata, err := yaml.Marshal(&c)
+				if err != nil {
+					return err
+				}
+
+				cmeta := fmt.Sprintf("---\n%s\n", string(cdata))
+
+				err = os.WriteFile(filepath.Join(cip, "body.md"), []byte(c.Body), 0644)
+				if err != nil {
+					return err
+				}
+
+				err = os.WriteFile(filepath.Join(cip, "comment.yml"), []byte(cmeta), 0644)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }

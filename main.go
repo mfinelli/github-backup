@@ -12,38 +12,6 @@ import "github.com/alecthomas/kong"
 import "github.com/google/go-github/v39/github"
 import "github.com/shurcooL/githubv4"
 
-func run2() {
-	// fmt.Println(repos)
-
-	// repoNames := []string{}
-
-	// for _, repo := range repos {
-	// 	repoNames = append(repoNames, *repo.Name)
-	// }
-
-	// // fmt.Println(repoNames)
-	// err = setupDirectories(owner, repoNames)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	// TODO: exit
-	// }
-
-	// for _, repo := range repos {
-	// 	fmt.Println(github.Stringify(repo.FullName))
-
-	// 	err := getIssuesAndCommentsForRepository(v4Client, *repo.Name, owner)
-
-	// 	if err != nil {
-	// 		fmt.Println(err)
-	// 		// TODO: exit
-	// 	}
-
-	// 	// if i == 100 {
-	// 	// 	break
-	// 	// }
-	// }
-}
-
 type CLI struct {
 	Organization string `help:"Backup an organization's repositories." arg:"" optional:""`
 
@@ -134,6 +102,18 @@ func run(ctx context.Context, cli CLI) int {
 		}
 
 		err = writeRepositoryMetadata(config, repo)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+
+		issues, err := getRepositoryIssues(ctx, v4Client, repo)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+
+		err = writeIssuesToDisk(config, repo, issues)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
