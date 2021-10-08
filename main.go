@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 import "golang.org/x/oauth2"
@@ -116,8 +117,21 @@ func run(ctx context.Context, cli CLI) int {
 		return 1
 	}
 
+	if len(repositories) != 0 {
+		err = os.Mkdir(filepath.Join(config.BackupPath,
+			*repositories[0].Owner.Login), 0755)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+	}
+
 	for _, r := range repositories {
-		fmt.Println(github.Stringify(r.FullName))
+		err = writeRepositoryMetadata(config, r)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
 	}
 
 	return 0

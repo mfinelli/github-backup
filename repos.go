@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 )
 
 import "github.com/google/go-github/v39/github"
+import "gopkg.in/yaml.v2"
 
 func getUserRepositories(ctx context.Context, client *github.Client, owner string) ([]*github.Repository, error) {
 	opt := &github.RepositoryListOptions{
@@ -63,4 +67,30 @@ func getSingleRepository(ctx context.Context, client *github.Client, owner, repo
 	}
 
 	return []*github.Repository{repository}, nil
+}
+
+func writeRepositoryMetadata(config Config, repo *github.Repository) error {
+	basepath := filepath.Join(config.BackupPath, *repo.Owner.Login,
+		*repo.Name)
+
+	err := os.Mkdir(basepath, 0755)
+	if err != nil {
+		return err
+	}
+
+	r := convertGithubRepositoryToRepository(repo)
+
+	data, err := yaml.Marshal(&r)
+	if err != nil {
+		return nil
+	}
+
+	meta := fmt.Sprintf("---\n%s\n", string(data))
+	err = os.WriteFile(filepath.Join(basepath, "repository.yml"),
+		[]byte(meta), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
