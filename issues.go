@@ -142,9 +142,8 @@ func writeIssuesToDisk(config Config, repo repository, issues []issue) error {
 				return nil
 			}
 
-			for ci, c := range i.Comments {
-				index := ci + 1 // don't do 0-based directories
-				cip := filepath.Join(cp, strconv.Itoa(index))
+			for _, c := range i.Comments {
+				cip := filepath.Join(cp, strconv.Itoa(c.Number))
 
 				err = os.Mkdir(cip, 0755)
 				if err != nil {

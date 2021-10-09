@@ -87,6 +87,7 @@ type apiComment struct {
 }
 
 type comment struct {
+	Number       int    `yaml:"-"`
 	Body         string `yaml:"-"`
 	DatabaseId   int    `yaml:"id"`
 	Author       string `yaml:"author"`
@@ -118,8 +119,9 @@ func convertApiIssueToIssue(input apiIssue, comments []apiComment) issue {
 		output.Labels = append(output.Labels, label.Name)
 	}
 
-	for _, c := range comments {
+	for i, c := range comments {
 		output.Comments = append(output.Comments, comment{
+			Number:       i + 1, // don't do zero-based comments
 			Body:         c.Body,
 			DatabaseId:   c.DatabaseId,
 			Author:       c.Author.Login,

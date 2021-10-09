@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/alecthomas/kong v0.2.17
 	github.com/google/go-github/v39 v39.1.0
+	github.com/nikitavoloboev/markdown-parser v0.0.0-20200626055436-f545e8dd85d3
 	github.com/shurcooL/githubv4 v0.0.0-20210922025249-6831e00d857f
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	gopkg.in/yaml.v2 v2.2.2
