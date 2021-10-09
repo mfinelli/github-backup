@@ -139,7 +139,7 @@ func writeIssuesToDisk(config Config, repo repository, issues []issue) error {
 			cp := filepath.Join(p, "comments")
 			err = os.Mkdir(cp, 0755)
 			if err != nil {
-				return nil
+				return err
 			}
 
 			for _, c := range i.Comments {
