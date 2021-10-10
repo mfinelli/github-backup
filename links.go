@@ -22,6 +22,12 @@ type linkParseResult struct {
 	links         map[string]string
 }
 
+type linkParseRequest struct {
+	issueNumber   int
+	commentNumber int
+	body          string
+}
+
 func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, issues []issue) error {
 	// images and videos are _always_ public even on private repos
 	publicFilesPrefix := "https://user-images.githubusercontent.com/"
@@ -29,23 +35,43 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 	privateFilesPrefix := fmt.Sprintf("https://github.com/%s/%s/files/",
 		repo.Owner, repo.Name)
 
+	requests := make(chan linkParseRequest)
 	results := make(chan linkParseResult)
+	numWorkers := 10
 	var wg sync.WaitGroup
 
-	for _, i := range issues {
-		wg.Add(1)
-		go func(iNumber, cNumber int, body string) {
-			defer wg.Done()
-			results <- parseBodyForLinks(iNumber, cNumber, body)
-		}(i.Number, 0, i.Body)
+	go func() {
+		for _, i := range issues {
+			requests <- linkParseRequest{
+				issueNumber:   i.Number,
+				commentNumber: 0,
+				body:          i.Body,
+			}
 
-		for _, c := range i.Comments {
-			wg.Add(1)
-			go func(iNo, cNo int, body string) {
-				defer wg.Done()
-				results <- parseBodyForLinks(iNo, cNo, body)
-			}(i.Number, c.Number, c.Body)
+			for _, c := range i.Comments {
+				requests <- linkParseRequest{
+					issueNumber:   i.Number,
+					commentNumber: c.Number,
+					body:          c.Body,
+				}
+			}
 		}
+
+		close(requests)
+	}()
+
+	for j := 0; j < numWorkers; j++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for request := range requests {
+				results <- parseBodyForLinks(
+					request.issueNumber,
+					request.commentNumber,
+					request.body,
+				)
+			}
+		}()
 	}
 
 	go func() {
