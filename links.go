@@ -102,8 +102,21 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 
 		for _, url := range r.links {
 			if strings.HasPrefix(url, privateFilesPrefix) {
-				// TODO: we can't handle these yet
-				continue
+				if repo.IsPrivate {
+					// TODO: we can't handle these yet
+					// https://github.com/mfinelli/github-backup/issues/1
+					continue
+				} else {
+					if !config.Quiet {
+						fmt.Printf("downloading file %s\n", url)
+					}
+
+					out := filepath.Join(pth, path.Base(url))
+					err = downloadPublicFile(config, out, url)
+					if err != nil {
+						return err
+					}
+				}
 			} else if strings.HasPrefix(url, publicFilesPrefix) {
 				if !config.Quiet {
 					fmt.Printf("downloading file %s\n", url)
