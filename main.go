@@ -113,6 +113,13 @@ func run(ctx context.Context, cli CLI) int {
 			return 1
 		}
 
+		prs, err := getRepositoryPrs(ctx, v4Client, repo)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+		fmt.Println(prs)
+
 		err = writeIssuesToDisk(config, repo, issues)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
