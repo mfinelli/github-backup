@@ -142,10 +142,10 @@ type pr struct {
 	CreatedAt    string        `yaml:"created"`
 	ClosedAt     string        `yaml:"closed,omitempty"`
 	LastEditedAt string        `yaml:"edited,omitempty"`
-	Merged       prMerged      `yaml:"merged"`
+	Merged       prMerged      `yaml:"merged,omitempty"`
 	IsDraft      bool          `yaml:"draft"`
 	PullRequest  prPullRequest `yaml:"pull_request"`
-	Reviews      []prReview    `yaml:"reviews"`
+	Reviews      []prReview    `yaml:"reviews,omitempty"`
 	Assignees    []string      `yaml:"assignees,omitempty"`
 	Labels       []string      `yaml:"labels,omitempty"`
 	Milestone    string        `yaml:"milestone,omitempty"`
@@ -153,14 +153,14 @@ type pr struct {
 }
 
 type prMerged struct {
-	MergedOn string `yaml:"on"`
 	MergedBy string `yaml:"by"`
+	MergedOn string `yaml:"date"`
 }
 
 type prPullRequest struct {
 	Target     string `yaml:"target"`
 	Source     string `yaml:"source"`
-	Repository string `yaml:"repository"`
+	Repository string `yaml:"from"`
 }
 
 type prReview struct {
@@ -245,10 +245,10 @@ func convertApiPrToPr(input apiPr, comments []apiComment) pr {
 		ClosedAt:     input.ClosedAt,
 		LastEditedAt: input.LastEditedAt,
 		IsDraft:      input.IsDraft,
-		Merged: prMerged{
-			MergedOn: input.MergedAt,
-			MergedBy: input.MergedBy.Login,
-		},
+		// Merged: prMerged{
+		// 	MergedOn: input.MergedAt,
+		// 	MergedBy: input.MergedBy.Login,
+		// },
 		PullRequest: prPullRequest{
 			Target:     input.BaseRefName,
 			Source:     input.HeadRefName,
@@ -271,6 +271,13 @@ func convertApiPrToPr(input apiPr, comments []apiComment) pr {
 			Review: review.State,
 			Date:   review.SubmittedAt,
 		})
+	}
+
+	if input.MergedAt != "" {
+		output.Merged = prMerged{
+			MergedOn: input.MergedAt,
+			MergedBy: input.MergedBy.Login,
+		}
 	}
 
 	for i, c := range comments {

@@ -118,9 +118,14 @@ func run(ctx context.Context, cli CLI) int {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
-		fmt.Println(prs)
 
 		err = writeIssuesToDisk(config, repo, issues)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
+
+		err = writePrsToDisk(config, repo, prs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
