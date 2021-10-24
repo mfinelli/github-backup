@@ -18,17 +18,24 @@ import parser "github.com/nikitavoloboev/markdown-parser"
 
 type linkParseResult struct {
 	issueNumber   int
-	commentNumber int // 0: issue; otherwise comment
+	prNumber      int
+	commentNumber int // 0: issue/pr; otherwise comment
 	links         map[string]string
 }
 
 type linkParseRequest struct {
 	issueNumber   int
+	prNumber      int
 	commentNumber int
 	body          string
 }
 
-func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, issues []issue) error {
+type normalizedIssuePr struct {
+	number int
+	path   string
+}
+
+func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, issues []issue, prs []pr) error {
 	// images and videos are _always_ public even on private repos
 	publicFilesPrefix := "https://user-images.githubusercontent.com/"
 	// other file types require an authenticated session to download
@@ -44,6 +51,7 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 		for _, i := range issues {
 			requests <- linkParseRequest{
 				issueNumber:   i.Number,
+				prNumber:      0,
 				commentNumber: 0,
 				body:          i.Body,
 			}
@@ -51,6 +59,25 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 			for _, c := range i.Comments {
 				requests <- linkParseRequest{
 					issueNumber:   i.Number,
+					prNumber:      0,
+					commentNumber: c.Number,
+					body:          c.Body,
+				}
+			}
+		}
+
+		for _, i := range prs {
+			requests <- linkParseRequest{
+				issueNumber:   0,
+				prNumber:      i.Number,
+				commentNumber: 0,
+				body:          i.Body,
+			}
+
+			for _, c := range i.Comments {
+				requests <- linkParseRequest{
+					issueNumber:   0,
+					prNumber:      i.Number,
 					commentNumber: c.Number,
 					body:          c.Body,
 				}
@@ -65,11 +92,7 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 		go func() {
 			defer wg.Done()
 			for request := range requests {
-				results <- parseBodyForLinks(
-					request.issueNumber,
-					request.commentNumber,
-					request.body,
-				)
+				results <- parseBodyForLinks(request)
 			}
 		}()
 	}
@@ -85,8 +108,9 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 		}
 
 		var pth string
+		normed := getIssueOrPr(&r)
 		basepath := filepath.Join(config.BackupPath, repo.Owner,
-			repo.Name, "issues", strconv.Itoa(r.issueNumber))
+			repo.Name, normed.path, strconv.Itoa(normed.number))
 
 		if r.commentNumber == 0 {
 			pth = filepath.Join(basepath, "files")
@@ -139,11 +163,12 @@ func downloadAllBodyLinks(ctx context.Context, config Config, repo repository, i
 	return nil
 }
 
-func parseBodyForLinks(issueNumber, commentNumber int, body string) linkParseResult {
+func parseBodyForLinks(r linkParseRequest) linkParseResult {
 	return linkParseResult{
-		issueNumber:   issueNumber,
-		commentNumber: commentNumber,
-		links:         parser.GetAllLinks(body),
+		issueNumber:   r.issueNumber,
+		prNumber:      r.prNumber,
+		commentNumber: r.commentNumber,
+		links:         parser.GetAllLinks(r.body),
 	}
 }
 
@@ -173,4 +198,12 @@ func downloadPublicFile(config Config, p, url string) error {
 	}
 
 	return nil
+}
+
+func getIssueOrPr(r *linkParseResult) normalizedIssuePr {
+	if r.issueNumber == 0 {
+		return normalizedIssuePr{r.prNumber, "prs"}
+	} else {
+		return normalizedIssuePr{r.issueNumber, "issues"}
+	}
 }

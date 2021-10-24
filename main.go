@@ -131,7 +131,7 @@ func run(ctx context.Context, cli CLI) int {
 			return 1
 		}
 
-		err = downloadAllBodyLinks(ctx, config, repo, issues)
+		err = downloadAllBodyLinks(ctx, config, repo, issues, prs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
