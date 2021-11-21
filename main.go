@@ -136,6 +136,12 @@ func run(ctx context.Context, cli CLI) int {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			return 1
 		}
+
+		err = cloneRepository(ctx, config, repo)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			return 1
+		}
 	}
 
 	return 0
